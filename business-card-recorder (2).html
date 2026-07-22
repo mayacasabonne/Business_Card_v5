@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Video business card</title>
+<style>
+:root{
+  --paper:#FFFFFF;
+  --shell:#F6F5F2;
+  --line:#E3E1DC;
+  --ink:#1B1B19;
+  --muted:#8B8A83;
+  --sage:#6E8375;
+  --signal:#B8483C;
+  --pad:clamp(20px,5vw,48px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:Verdana,Geneva,sans-serif;
+  background:var(--shell);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;
+}
+.app{width:100%;max-width:720px;background:var(--paper);min-height:100dvh;display:flex;flex-direction:column}
+.screen{display:none;flex:1;flex-direction:column;padding:var(--pad)}
+.screen.on{display:flex}
+
+/* device-specific copy and controls */
+.desktop-only,.mobile-only{display:none}
+body.is-desktop .desktop-only{display:revert}
+body.is-mobile .mobile-only{display:revert}
+
+.eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-bottom:28px}
+h1{font-size:clamp(22px,4.4vw,30px);font-weight:700;line-height:1.25;letter-spacing:-.01em}
+h2{font-size:16px;font-weight:700;margin-bottom:6px}
+p{font-size:13px;line-height:1.75;color:#4A4A45;max-width:46ch}
+.lede{margin-top:18px}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+/* initials */
+.field{margin-top:18px}
+label.lbl{display:block;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+input.initials{
+  font-family:inherit;font-size:24px;font-weight:700;letter-spacing:.42em;
+  text-transform:uppercase;padding:16px 20px;border:1px solid var(--ink);
+  background:var(--shell);color:var(--ink);width:100%;max-width:300px;border-radius:0;
+}
+input.initials:focus{outline:2px solid var(--sage);outline-offset:2px}
+input.initials.bad{border-color:var(--signal)}
+.hint{font-size:11px;line-height:1.7;color:var(--muted);margin-top:10px}
+.hint.bad{color:var(--signal)}
+.filename{font-size:11px;color:var(--muted);margin-top:10px;letter-spacing:.04em}
+.filename b{color:var(--ink);font-weight:700}
+
+/* ruler */
+.ruler{display:flex;gap:3px;height:6px;margin:26px 0 10px}
+.seg{flex:1;background:var(--line);position:relative;overflow:hidden;border-radius:1px}
+.seg[data-kind="optional"]{background:#EDEBE5}
+.seg .fill{position:absolute;inset:0;width:0;background:var(--sage)}
+.ruler-legend{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.list{list-style:none;margin-top:8px}
+.item{border-top:1px solid var(--line);padding:18px 0;display:flex;gap:16px;align-items:flex-start}
+.item:last-child{border-bottom:1px solid var(--line)}
+.num{font-size:10px;letter-spacing:.14em;color:var(--muted);padding-top:3px;min-width:26px}
+.q{font-size:14px;line-height:1.6;flex:1}
+.dur{font-size:10px;letter-spacing:.12em;color:var(--muted);padding-top:4px;white-space:nowrap}
+
+.choice{cursor:pointer}
+.choice input{position:absolute;opacity:0;pointer-events:none}
+.mark{width:16px;height:16px;border:1px solid var(--ink);border-radius:50%;margin-top:4px;flex:0 0 auto;position:relative}
+.choice input:checked + .mark::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--sage)}
+.choice input:focus-visible + .mark{outline:2px solid var(--sage);outline-offset:3px}
+.choice:has(input:checked) .q{font-weight:700}
+
+/* device picker */
+.devices{display:grid;gap:16px;margin-top:18px}
+.devices select{
+  font-family:inherit;font-size:12px;padding:13px 14px;border:1px solid var(--line);
+  background:var(--shell);color:var(--ink);width:100%;border-radius:0;
+}
+.devices select:focus{outline:2px solid var(--sage);outline-offset:2px}
+.devices select:disabled{opacity:.45}
+.thumb{border:1px solid var(--line);background:#000;width:100%;max-width:300px;aspect-ratio:16/9}
+.thumb video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+
+.actions{margin-top:auto;padding-top:36px;display:flex;gap:12px;flex-wrap:wrap}
+button{font-family:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;padding:16px 26px;border:1px solid var(--ink);background:var(--ink);color:#fff;cursor:pointer;border-radius:0}
+button.ghost{background:transparent;color:var(--ink)}
+button.small{padding:12px 18px;font-size:10px}
+button:disabled{opacity:.3;cursor:not-allowed}
+button:focus-visible{outline:2px solid var(--sage);outline-offset:3px}
+
+/* phone: thumb-friendly, sticky action bar */
+body.is-mobile .app{max-width:none}
+body.is-mobile .actions{
+  position:sticky;bottom:0;background:var(--paper);
+  margin-left:calc(var(--pad) * -1);margin-right:calc(var(--pad) * -1);
+  padding:16px var(--pad) calc(16px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);gap:10px;
+}
+body.is-mobile .actions button{flex:1 1 auto;min-height:54px;padding:16px 14px}
+body.is-mobile input.initials{max-width:none;font-size:26px}
+body.is-mobile p{max-width:none}
+
+/* ── capture ── */
+#capture{padding:0;background:#000;position:relative;justify-content:center;overflow:hidden}
+body.capturing{background:#000}
+body.capturing .app{max-width:none;background:#000}
+#live{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;transform:scaleX(-1)}
+.overlay{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;width:100%;padding:clamp(14px,2.4vw,32px)}
+.topbar{display:flex;justify-content:space-between;align-items:center;color:#fff}
+.rec{display:flex;align-items:center;gap:9px;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--signal)}
+.rec.live .dot{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.clock{font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.75)}
+
+.prompt{
+  margin-top:auto;background:rgba(255,255,255,.95);padding:clamp(14px,2vw,24px);
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  display:grid;grid-template-columns:1fr auto;gap:0 clamp(18px,3vw,40px);align-items:center;
+}
+.prompt .eyebrow{margin-bottom:8px}
+.prompt-text{font-size:clamp(14px,1.9vw,22px);line-height:1.45;font-weight:700}
+.qcount{grid-row:1 / span 2;text-align:right;line-height:1}
+.qcount .n{font-size:clamp(34px,5.4vw,62px);font-weight:700;font-variant-numeric:tabular-nums;display:block}
+.qcount .n.low{color:var(--signal)}
+.qcount .l{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);display:block;margin-top:6px}
+.prompt .ruler{grid-column:1 / -1;margin:14px 0 0}
+.upnext{grid-column:1 / -1;font-size:11px;line-height:1.6;color:var(--muted);margin-top:10px}
+body.is-mobile .upnext{display:none}
+
+.countdown{position:absolute;inset:0;z-index:3;background:rgba(27,27,25,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;color:#fff;text-align:center;padding:24px}
+.count-num{font-size:clamp(64px,10vw,110px);font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.count-label{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.7);max-width:34ch;line-height:2}
+
+.rotate{position:absolute;inset:0;z-index:4;background:#111;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;text-align:center;padding:32px}
+@media (orientation:portrait){body.is-mobile #capture.on .rotate{display:flex}}
+
+.note{font-size:11px;line-height:1.7;color:var(--muted);margin-top:14px;max-width:46ch}
+.status{font-size:11px;line-height:1.7;letter-spacing:.04em;margin-top:16px;min-height:16px}
+.status.err{color:var(--signal)}
+.status.ok{color:var(--sage)}
+a{color:var(--ink);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--sage);outline-offset:3px}
+ol.steps{list-style:none;margin-top:14px}
+ol.steps li{display:flex;gap:16px;padding:14px 0;border-top:1px solid var(--line);font-size:13px;line-height:1.7;color:#4A4A45}
+ol.steps li:last-child{border-bottom:1px solid var(--line)}
+ol.steps .stepnum{font-size:10px;letter-spacing:.14em;color:var(--muted);padding-top:4px;min-width:26px}
+.preview-wrap{border:1px solid var(--line);background:#000;margin-top:8px}
+#playback{width:100%;aspect-ratio:16/9;display:block;background:#000}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- 1. INTRO -->
+<section class="screen on" id="intro">
+  <div class="eyebrow">Video business card</div>
+  <h1>The tunnel's department<br>business cards<br>in sixty seconds.</h1>
+  <p class="lede">Every colleague records a short spoken introduction so anyone can put a face and a voice to a name before the first meeting.</p>
+
+  <div class="field">
+    <label class="lbl" for="initials">Your initials</label>
+    <input class="initials" id="initials" maxlength="6" autocomplete="off"
+           spellcheck="false" inputmode="latin" placeholder="MY INITIALS" aria-describedby="initialsHint">
+    <div class="hint" id="initialsHint">This is how your recording will be named and found.</div>
+    <div class="filename" id="filenamePreview"></div>
+  </div>
+
+  <hr>
+  <h2>How it works</h2>
+  <p>You answer three set questions and one you choose yourself. Each question appears on screen with its own countdown. Recording runs straight through — no editing, no retakes mid-way. If you're not happy with it, record again from the start.</p>
+  <p class="note desktop-only">Recording is landscape and full screen. You'll pick your camera and microphone on the next-but-one step, then allow access when your browser asks.</p>
+  <p class="note mobile-only">Turn your phone sideways when the camera opens — recordings are landscape. Allow camera and microphone access when asked, and find a quiet spot with light on your face.</p>
+
+  <div class="actions">
+    <button id="toSelect" disabled>Choose my questions</button>
+  </div>
+</section>
+
+<!-- 2. SELECT -->
+<section class="screen" id="select">
+  <div class="eyebrow">Step 1 of 3 — Your questions</div>
+  <h2>Everyone answers these</h2>
+  <p>Fixed for all business cards, in this order.</p>
+  <ul class="list" id="mandatoryList"></ul>
+  <hr>
+  <h2>Pick one to close with</h2>
+  <p>Choose a single question. Leave it blank and you'll get free time at the end instead.</p>
+  <ul class="list" id="optionalList"></ul>
+  <div class="actions">
+    <button class="ghost" data-back="intro">Back</button>
+    <button id="toConfirm">Review my running order</button>
+  </div>
+</section>
+
+<!-- 3. CONFIRM -->
+<section class="screen" id="confirm">
+  <div class="eyebrow">Step 2 of 3 — Running order</div>
+  <h2>This is what you'll be asked</h2>
+  <p>The bar below is your minute. Each block is one question, sized to the time you get for it.</p>
+  <div class="ruler" id="confirmRuler"></div>
+  <div class="ruler-legend"><span>0:00</span><span>1:00</span></div>
+  <ul class="list" id="confirmList"></ul>
+
+  <div class="desktop-only">
+    <hr>
+    <h2>Camera and microphone</h2>
+    <p>Check you're on the right ones.</p>
+    <div class="devices">
+      <button class="ghost small" id="probe" style="justify-self:start">Show my devices</button>
+      <select id="cameraSel" disabled aria-label="Camera"><option>Camera — not checked yet</option></select>
+      <select id="micSel" disabled aria-label="Microphone"><option>Microphone — not checked yet</option></select>
+      <div class="thumb" id="thumb" hidden><video id="thumbVideo" autoplay playsinline muted></video></div>
+    </div>
+    <div class="status" id="deviceStatus"></div>
+  </div>
+
+  <p class="note desktop-only">Opening the camera switches to full screen. Press Escape at any time to stop.</p>
+  <p class="note mobile-only">Turn your phone sideways once the camera opens.</p>
+
+  <div class="actions">
+    <button class="ghost" data-back="select">Change my choice</button>
+    <button id="toCapture">Start</button>
+  </div>
+</section>
+
+<!-- 4. CAPTURE -->
+<section class="screen" id="capture">
+  <video id="live" autoplay playsinline muted></video>
+  <div class="overlay">
+    <div class="topbar">
+      <div class="rec" id="recBadge"><span class="dot"></span><span id="recLabel">Standing by</span></div>
+      <div class="clock" id="clock">0:00 / 1:00</div>
+    </div>
+    <div class="prompt">
+      <div class="eyebrow" id="promptKind">Getting ready</div>
+      <div class="prompt-text" id="promptText">—</div>
+      <div class="qcount"><span class="n" id="qNum">—</span><span class="l">sec left</span></div>
+      <div class="ruler" id="liveRuler"></div>
+      <div class="upnext" id="upnext"></div>
+    </div>
+  </div>
+  <div class="countdown" id="countdown">
+    <div class="count-num" id="countNum">5</div>
+    <div class="count-label" id="countLabel">Recording starts</div>
+  </div>
+  <div class="rotate">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.4">
+      <rect x="3" y="7" width="18" height="10" rx="2"/><path d="M12 3v2M9 4l3-1 3 1"/>
+    </svg>
+    <div class="count-label">Turn your phone sideways to record</div>
+  </div>
+</section>
+
+<!-- 5. DONE -->
+<section class="screen" id="done">
+  <div class="eyebrow">Step 3 of 3 — Business card complete</div>
+  <h2>Have a look before you save it</h2>
+  <div class="preview-wrap"><video id="playback" controls playsinline></video></div>
+  <div class="filename" id="doneFilename"></div>
+
+  <hr>
+  <h2>Two steps left</h2>
+  <ol class="steps">
+    <li><span class="stepnum">01</span><span>Save the file — the button below puts it in your Downloads.</span></li>
+    <li><span class="stepnum">02</span><span>Drop it into the shared folder: <a id="folderLink" href="#" target="_blank" rel="noopener">open the folder</a>. Drag the file straight in.</span></li>
+  </ol>
+  <p class="note" id="folderPath"></p>
+  <div class="status" id="status"></div>
+
+  <div class="actions">
+    <button class="ghost" id="retake">Record again</button>
+    <button id="download">Save my business card</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────────
+   CONFIG
+   ───────────────────────────────────────────── */
+const CONFIG = {
+  totalSeconds: 60,
+  filePrefix: "presentation_",
+
+  mandatory: [
+    { text: "Tell us who you are and where you're based. Mention your role and how long you've been with the company and in the business.", seconds: 15 },
+    { text: "Describe your main responsibilities and the areas you spend most of your time on. Keep it simple and avoid too much jargon.",   seconds: 15 },
+    { text: "Share the topics people typically come to you for. Think about the knowledge you'd like colleagues to know you have.",  seconds: 15 }
+  ],
+  optional: [
+    { text: "Explain your preferred working style and what helps you collaborate effectively with others.",       seconds: 15 },
+    { text: "Share practical tips that make working together easier, including communication preferences if relevant.", seconds: 15 },
+    { text: "Tell us something about your interests, hobbies, or passions outside of work.",         seconds: 15 }
+  ],
+  freeClosing: { text: "Free time — say anything you'd like to add.", seconds: 15 },
+
+  // Capture quality. Phones get the lighter profile.
+  // If uploads fail on size, drop desktop bitsPerSecond to 2500000.
+  video: {
+    desktop: { width:1920, height:1080, frameRate:30, bitsPerSecond:8000000 },
+    mobile:  { width:1280, height:720,  frameRate:30, bitsPerSecond:4000000 },
+    audioBitsPerSecond: 128000
+  },
+
+  // Where people drop the file once they've saved it.
+  folder: {
+    url:  "",   // paste your SharePoint folder URL here
+    label: "Documents › 02 Business development › 0202 CVs › Video business cards"
+  }
+};
+
+/* ───────────────── device split ───────────────── */
+const IS_MOBILE = matchMedia('(pointer:coarse)').matches && navigator.maxTouchPoints > 0;
+document.body.classList.add(IS_MOBILE ? 'is-mobile' : 'is-desktop');
+const QUALITY = IS_MOBILE ? CONFIG.video.mobile : CONFIG.video.desktop;
+
+/* ───────────────── state ───────────────── */
+let initials = "";
+let chosenOptional = null;
+let running = [];
+let stream = null, recorder = null, chunks = [], blob = null;
+let tickHandle = null, countHandle = null;
+let probeStream = null;
+let deviceIds = { camera:null, mic:null };
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const pad = n => String(n).padStart(2,'0');
+const mb = n => (n / 1048576).toFixed(1) + ' MB';
+const show = id => {
+  $$('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  document.body.classList.toggle('capturing', id === 'capture');
+  if(id !== 'confirm') stopProbe();
+};
+
+/* ───────────────── initials ───────────────── */
+function ext(){ return (blob && blob.type.includes('mp4')) ? 'mp4' : 'webm'; }
+function filename(){ return `${CONFIG.filePrefix}${initials}.${ext()}`; }
+
+const HINT_DEFAULT = 'This is how your recording will be named and found.';
+const initialsInput = $('#initials');
+initialsInput.addEventListener('input', () => {
+  const clean = initialsInput.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,6);
+  if(initialsInput.value !== clean) initialsInput.value = clean;
+  initials = clean;
+
+  const ok = clean.length >= 2;
+  $('#toSelect').disabled = !ok;
+  initialsInput.classList.toggle('bad', clean.length > 0 && !ok);
+  $('#initialsHint').classList.toggle('bad', clean.length > 0 && !ok);
+  $('#initialsHint').textContent = (clean.length > 0 && !ok)
+    ? 'A little short — initials need at least two letters.'
+    : HINT_DEFAULT;
+  $('#filenamePreview').innerHTML = ok
+    ? `Saves as <b>${CONFIG.filePrefix}${clean}</b>`
+    : '';
+});
+
+/* ───────────────── questions ───────────────── */
+function buildRunning(){
+  const closing = chosenOptional === null
+    ? { ...CONFIG.freeClosing, kind:'optional' }
+    : { ...CONFIG.optional[chosenOptional], kind:'optional' };
+  running = [...CONFIG.mandatory.map(q => ({...q, kind:'mandatory'})), closing];
+  const spent = running.slice(0,-1).reduce((a,q)=>a+q.seconds,0);
+  running[running.length-1].seconds = CONFIG.totalSeconds - spent;
+}
+
+function renderSelect(){
+  $('#mandatoryList').innerHTML = CONFIG.mandatory.map((q,i)=>`
+    <li class="item">
+      <span class="num">${pad(i+1)}</span>
+      <span class="q">${q.text}</span>
+      <span class="dur">${q.seconds}s</span>
+    </li>`).join('');
+
+  $('#optionalList').innerHTML = CONFIG.optional.map((q,i)=>`
+    <li class="item">
+      <label class="choice item" style="border:0;padding:0;width:100%">
+        <input type="radio" name="opt" value="${i}">
+        <span class="mark"></span>
+        <span class="q">${q.text}</span>
+        <span class="dur">${q.seconds}s</span>
+      </label>
+    </li>`).join('') + `
+    <li class="item">
+      <label class="choice item" style="border:0;padding:0;width:100%">
+        <input type="radio" name="opt" value="none" checked>
+        <span class="mark"></span>
+        <span class="q">No fourth question — leave me free time at the end.</span>
+        <span class="dur">15s</span>
+      </label>
+    </li>`;
+}
+
+function rulerHTML(){
+  return running.map(q =>
+    `<span class="seg" data-kind="${q.kind}" style="flex:${q.seconds}"><span class="fill"></span></span>`).join('');
+}
+function renderConfirm(){
+  buildRunning();
+  $('#confirmRuler').innerHTML = rulerHTML();
+  $('#confirmList').innerHTML = running.map((q,i)=>`
+    <li class="item">
+      <span class="num">${pad(i+1)}</span>
+      <span class="q">${q.text}</span>
+      <span class="dur">${q.seconds}s</span>
+    </li>`).join('');
+  if(!IS_MOBILE) maybeAutoProbe();
+}
+
+/* ───────────────── device picker (desktop) ───────────────── */
+async function maybeAutoProbe(){
+  // If permission was granted earlier, labels are already readable — fill silently.
+  try{
+    const list = await navigator.mediaDevices.enumerateDevices();
+    if(list.some(d => d.label)) await probeDevices();
+  }catch(e){}
+}
+
+async function probeDevices(){
+  const s = $('#deviceStatus');
+  s.className = 'status'; s.textContent = 'Checking…';
+  try{
+    stopProbe();
+    probeStream = await navigator.mediaDevices.getUserMedia({ video:true, audio:true });
+    $('#thumbVideo').srcObject = probeStream;
+    $('#thumb').hidden = false;
+
+    const list = await navigator.mediaDevices.enumerateDevices();
+    fillSelect($('#cameraSel'), list.filter(d => d.kind === 'videoinput'), 'Camera');
+    fillSelect($('#micSel'),    list.filter(d => d.kind === 'audioinput'), 'Microphone');
+
+    deviceIds.camera = $('#cameraSel').value || null;
+    deviceIds.mic    = $('#micSel').value || null;
+    s.textContent = '';
+    $('#probe').textContent = 'Check again';
+  }catch(err){
+    s.className = 'status err';
+    s.textContent = 'Camera or microphone access was refused. Allow it in your browser settings, then check again.';
+  }
+}
+
+function fillSelect(sel, devices, kind){
+  sel.disabled = devices.length === 0;
+  sel.innerHTML = devices.length
+    ? devices.map((d,i) => `<option value="${d.deviceId}">${d.label || kind + ' ' + (i+1)}</option>`).join('')
+    : `<option>No ${kind.toLowerCase()} found</option>`;
+}
+
+function stopProbe(){
+  if(probeStream){ probeStream.getTracks().forEach(t => t.stop()); probeStream = null; }
+  const t = $('#thumb'); if(t) t.hidden = true;
+}
+
+$('#probe') && ($('#probe').onclick = probeDevices);
+$('#cameraSel') && ($('#cameraSel').onchange = e => { deviceIds.camera = e.target.value; probeDevices(); });
+$('#micSel')    && ($('#micSel').onchange    = e => { deviceIds.mic = e.target.value; });
+
+/* ───────────────── capture ───────────────── */
+async function startCapture(){
+  stopProbe();
+  show('capture');
+  $('#liveRuler').innerHTML = rulerHTML();
+  $('#promptText').textContent = 'Get comfortable in frame.';
+  $('#promptKind').textContent = 'Getting ready';
+  $('#qNum').textContent = '—';
+  $('#upnext').textContent = 'First up: ' + running[0].text;
+  $('#recLabel').textContent = 'Standing by';
+  $('#recBadge').classList.remove('live');
+  $('#countdown').style.display = 'flex';
+  $('#countNum').textContent = '5';
+  $('#countLabel').textContent = 'Recording starts';
+
+  try{ await document.documentElement.requestFullscreen({navigationUI:'hide'}); }catch(e){}
+  if(IS_MOBILE){ try{ await screen.orientation.lock('landscape'); }catch(e){} }
+
+  const videoC = {
+    width:{ ideal:QUALITY.width },
+    height:{ ideal:QUALITY.height },
+    frameRate:{ ideal:QUALITY.frameRate },
+    aspectRatio:{ ideal:16/9 }
+  };
+  if(deviceIds.camera) videoC.deviceId = { exact: deviceIds.camera };
+  else videoC.facingMode = 'user';
+
+  const audioC = { echoCancellation:true, noiseSuppression:true, autoGainControl:true };
+  if(deviceIds.mic) audioC.deviceId = { exact: deviceIds.mic };
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:videoC, audio:audioC });
+  }catch(err){
+    try{ // chosen device may have vanished — fall back to defaults
+      stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'user'}, audio:true });
+    }catch(err2){
+      $('#countNum').textContent = '';
+      $('#countLabel').textContent = 'Camera blocked. Allow camera and microphone in your browser settings, then reload this page.';
+      return;
+    }
+  }
+  $('#live').srcObject = stream;
+  runCountdown(5);
+}
+
+function runCountdown(n){
+  const cd = $('#countdown'), num = $('#countNum');
+  num.textContent = n;
+  countHandle = setInterval(()=>{
+    n--;
+    if(n <= 0){ clearInterval(countHandle); cd.style.display='none'; startRecording(); }
+    else num.textContent = n;
+  }, 1000);
+}
+
+function pickMime(){
+  return [
+    'video/mp4;codecs=avc1.640028,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ].find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+function startRecording(){
+  chunks = [];
+  const mimeType = pickMime();
+  const opts = {
+    videoBitsPerSecond: QUALITY.bitsPerSecond,
+    audioBitsPerSecond: CONFIG.video.audioBitsPerSecond
+  };
+  if(mimeType) opts.mimeType = mimeType;
+
+  try{ recorder = new MediaRecorder(stream, opts); }
+  catch(e){ recorder = new MediaRecorder(stream); }
+
+  recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+  recorder.onstop = finish;
+  recorder.start(1000);
+
+  $('#recBadge').classList.add('live');
+  $('#recLabel').textContent = 'Recording';
+
+  const started = performance.now();
+  const fills = $$('#liveRuler .fill');
+  const bounds = [];
+  let edge = 0;
+  running.forEach(q => { bounds.push([edge, edge + q.seconds]); edge += q.seconds; });
+
+  let shownIndex = -1;
+
+  tickHandle = setInterval(()=>{
+    const t = Math.min((performance.now() - started) / 1000, CONFIG.totalSeconds);
+    $('#clock').textContent = `0:${pad(Math.floor(t))} / 1:00`;
+
+    let current = running.length - 1;
+    for(let i=0;i<running.length;i++){
+      const [a,b] = bounds[i];
+      fills[i].style.width = (Math.max(0, Math.min(1, (t-a)/(b-a))) * 100) + '%';
+      if(t >= a && t < b) current = i;
+    }
+
+    const left = Math.max(0, Math.ceil(bounds[current][1] - t));
+    const numEl = $('#qNum');
+    if(numEl.textContent !== String(left)) numEl.textContent = left;
+    numEl.classList.toggle('low', left <= 3);
+
+    if(current !== shownIndex){
+      shownIndex = current;
+      const q = running[current];
+      $('#promptText').textContent = q.text;
+      $('#promptKind').textContent =
+        `${q.kind === 'mandatory' ? 'Set question' : 'Your question'} ${current+1} of ${running.length}`;
+      const next = running[current+1];
+      $('#upnext').textContent = next ? 'Next: ' + next.text : 'Last one — finish strong.';
+    }
+
+    if(t >= CONFIG.totalSeconds) stopRecording();
+  }, 100);
+}
+
+function stopRecording(){
+  clearInterval(tickHandle);
+  clearInterval(countHandle);
+  if(recorder && recorder.state !== 'inactive') recorder.stop();
+  else cleanupCapture();
+}
+
+function cleanupCapture(){
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+  try{ screen.orientation.unlock(); }catch(e){}
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+
+function finish(){
+  blob = new Blob(chunks, { type: recorder.mimeType || 'video/webm' });
+  cleanupCapture();
+  $('#playback').src = URL.createObjectURL(blob);
+  $('#doneFilename').innerHTML = `Saves as <b>${filename()}</b> — ${mb(blob.size)}`;
+  $('#status').textContent = '';
+  $('#status').className = 'status';
+  show('done');
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && $('#capture').classList.contains('on')){
+    clearInterval(tickHandle); clearInterval(countHandle);
+    if(recorder && recorder.state !== 'inactive'){ recorder.onstop = null; recorder.stop(); }
+    cleanupCapture();
+    show('confirm');
+  }
+});
+
+/* ───────────────── saving ───────────────── */
+function showFolder(){
+  const link = $('#folderLink');
+  const path = $('#folderPath');
+  if(CONFIG.folder.url){
+    link.href = CONFIG.folder.url;
+  }else{
+    link.removeAttribute('href');
+    link.textContent = 'the shared folder';
+  }
+  path.textContent = CONFIG.folder.label ? 'Folder: ' + CONFIG.folder.label : '';
+}
+
+function saveFile(){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename();
+  a.click();
+
+  const s = $('#status');
+  s.className = 'status ok';
+  s.textContent = 'Saved as ' + filename() + '. Last step: drop it into the shared folder.';
+}
+
+/* ───────────────── wiring ───────────────── */
+$('#toSelect').onclick = () => { renderSelect(); show('select'); };
+$('#toConfirm').onclick = () => {
+  const v = document.querySelector('input[name=opt]:checked').value;
+  chosenOptional = v === 'none' ? null : Number(v);
+  renderConfirm(); show('confirm');
+};
+$('#toCapture').onclick = startCapture;
+$$('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
+$('#retake').onclick = () => { blob = null; show('confirm'); };
+$('#download').onclick = saveFile;
+showFolder();
+</script>
+</body>
+</html>
