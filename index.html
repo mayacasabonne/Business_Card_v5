@@ -271,7 +271,7 @@ ol.steps .stepnum{font-size:10px;letter-spacing:.14em;color:var(--muted);padding
   <h2>Two steps left</h2>
   <ol class="steps">
     <li><span class="stepnum">01</span><span>Save the file — the button below puts it in your Downloads.</span></li>
-    <li><span class="stepnum">02</span><span>Drop it into the shared folder: <a id="folderLink" href="#" target="_blank" rel="noopener">open the folder</a>. Drag the file straight in.</span></li>
+    <li><span class="stepnum">02</span><span>Open the shared folder and drag the file straight in.</span></li>
   </ol>
   <p class="note" id="folderPath"></p>
   <div class="status" id="status"></div>
@@ -279,6 +279,7 @@ ol.steps .stepnum{font-size:10px;letter-spacing:.14em;color:var(--muted);padding
   <div class="actions">
     <button class="ghost" id="retake">Record again</button>
     <button id="download">Save my business card</button>
+    <button class="ghost" id="folderBtn" hidden>Open the folder</button>
   </div>
 </section>
 
@@ -305,17 +306,15 @@ const CONFIG = {
   freeClosing: { text: "Free time — say anything you'd like to add.", seconds: 15 },
 
   // Capture quality. Phones get the lighter profile.
-  // If uploads fail on size, drop desktop bitsPerSecond to 2500000.
   video: {
-    desktop: { width:1920, height:1080, frameRate:30, bitsPerSecond:8000000 },
-    mobile:  { width:1280, height:720,  frameRate:30, bitsPerSecond:4000000 },
+    desktop: { width:1920, height:1080, frameRate:30, bitsPerSecond:2500000 },
+    mobile:  { width:1280, height:720,  frameRate:30, bitsPerSecond:2000000 },
     audioBitsPerSecond: 128000
   },
 
   // Where people drop the file once they've saved it.
   folder: {
     url:  "https://ramboll.sharepoint.com/:f:/r/sites/TINA1/Shared%20Documents/02%20Business%20development/0202%20CVs/Video%20business%20cards",   // 
-    label: "Documents › 02 Business development › 0202 CVs › Video business cards"
   }
 };
 
@@ -609,6 +608,9 @@ function finish(){
   $('#doneFilename').innerHTML = `Saves as <b>${filename()}</b> — ${mb(blob.size)}`;
   $('#status').textContent = '';
   $('#status').className = 'status';
+  $('#download').classList.remove('ghost');
+  $('#download').textContent = 'Save my business card';
+  $('#folderBtn').classList.add('ghost');
   show('done');
 }
 
@@ -623,14 +625,9 @@ document.addEventListener('keydown', e => {
 
 /* ───────────────── saving ───────────────── */
 function showFolder(){
-  const link = $('#folderLink');
+  const btn  = $('#folderBtn');
   const path = $('#folderPath');
-  if(CONFIG.folder.url){
-    link.href = CONFIG.folder.url;
-  }else{
-    link.removeAttribute('href');
-    link.textContent = 'the shared folder';
-  }
+  btn.hidden = !CONFIG.folder.url;
   path.textContent = CONFIG.folder.label ? 'Folder: ' + CONFIG.folder.label : '';
 }
 
@@ -643,6 +640,10 @@ function saveFile(){
   const s = $('#status');
   s.className = 'status ok';
   s.textContent = 'Saved as ' + filename() + '. Last step: drop it into the shared folder.';
+
+  $('#download').classList.add('ghost');
+  $('#download').textContent = 'Save again';
+  $('#folderBtn').classList.remove('ghost');
 }
 
 /* ───────────────── wiring ───────────────── */
@@ -656,6 +657,7 @@ $('#toCapture').onclick = startCapture;
 $$('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
 $('#retake').onclick = () => { blob = null; show('confirm'); };
 $('#download').onclick = saveFile;
+$('#folderBtn').onclick = () => window.open(CONFIG.folder.url, '_blank', 'noopener');
 showFolder();
 </script>
 </body>
